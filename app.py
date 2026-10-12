@@ -7,7 +7,7 @@ from core import METRICS, shortlist, growth
 from data_source import fetch_latest, resolve
 
 st.set_page_config(page_title='ModelScope Atlas', page_icon='🧭', layout='wide')
-st.markdown('''<style>.block-container{padding-top:2rem}h1{letter-spacing:-.04em}div[data-testid="stMetric"]{background:#151e32;border:1px solid #28364c;border-radius:12px;padding:18px}section[data-testid="stSidebar"]{border-right:1px solid #28364c}</style>''', unsafe_allow_html=True)
+st.markdown('''<style>.block-container{padding-top:6rem}h1{letter-spacing:-.04em}div[data-testid="stMetric"]{background:#151e32;border:1px solid #28364c;border-radius:12px;padding:18px}section[data-testid="stSidebar"]{border-right:1px solid #28364c}</style>''', unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown('**🧭 ModelScope Atlas**')
@@ -98,9 +98,18 @@ elif page == 'Explore':
     metric=a.selectbox('Measure',METRICS)
     color=b.selectbox('Color by',['Domain','Organization','Model accessibility','Confidence'])
     log=c.toggle('Logarithmic scale',True)
-    plotted=f.dropna(subset=[metric,'Publication date'])
+    plotted=f.dropna(subset=[metric,'Publication date']).copy()
+    plot_color=color
+    if color == 'Domain':
+        plotted['Domain group']=plotted['Domain'].apply(lambda value: 'Multiple domains' if ',' in value else value)
+        plot_color='Domain group'
+    elif color == 'Organization':
+        leading=plotted['Organization'].value_counts().head(12).index
+        plotted['Organization group']=plotted['Organization'].where(plotted['Organization'].isin(leading),'Other organizations')
+        plot_color='Organization group'
+        st.caption('Chart colors distinguish the 12 most represented organizations; others share a color. Hover shows the exact organization.')
     st.caption(f'{len(plotted):,} plotted; {len(f)-len(plotted):,} omitted because date or measure is missing.')
-    st.plotly_chart(px.scatter(plotted,x='Publication date',y=metric,color=color,hover_name='Model',hover_data=['Confidence','Organization'],log_y=log,template='plotly_dark'),use_container_width=True)
+    st.plotly_chart(px.scatter(plotted,x='Publication date',y=metric,color=plot_color,hover_name='Model',hover_data=['Confidence','Organization','Domain'],log_y=log,template='plotly_dark'),use_container_width=True)
     st.header('Largest models by selected measure')
     n=st.slider('Number of records',5,50,15)
     table(f.dropna(subset=[metric]).sort_values(metric,ascending=False)[visible].head(n))
