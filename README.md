@@ -1,5 +1,7 @@
 # ModelScope Atlas
 
+[Open the live app](https://modelscope-atlas.streamlit.app/)
+
 An independent Streamlit research workspace for exploring AI models, their training scale, accessibility, and evidence quality.
 
 ## Features
