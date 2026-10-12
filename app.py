@@ -64,14 +64,18 @@ f = df[mask].copy()
 st.session_state.setdefault('watchlist', [])
 st.caption('MODELSCOPE ATLAS / '+page.upper())
 st.title({'Overview':'See the frontier. Understand the evidence.','Explore':'Explore the model landscape','Compare':'Compare the evidence side by side','Research assistant':'Turn a question into a research shortlist','Scenario lab':'Explore the assumptions behind scale','Watchlist':'Your research watchlist','Data quality & sources':'Trust begins with the source'}[page])
-st.caption(f'{len(f):,} matching records · {origin}' + (' · Watchlist uses all saved records' if page == 'Watchlist' else ' · Workspace filters apply'))
+if page == 'Watchlist':
+    saved_count=df['Record'].isin(st.session_state.watchlist).sum()
+    st.caption(f'{saved_count:,} saved records available · {origin} · Watchlist uses all saved records')
+else:
+    st.caption(f'{len(f):,} matching records · {origin} · Workspace filters apply')
 if f.empty and page != 'Watchlist':
     st.info('No records match your filters. Broaden the publication years or clear search, organization, domain and accessibility filters.')
 
 visible = ['Model','Organization','Publication date','Domain','Model accessibility','Confidence'] + METRICS
 
 def table(data):
-    st.dataframe(data, hide_index=True, width='stretch', column_config={'Publication date': st.column_config.DateColumn('Publication date', format='MMM D, YYYY')})
+    st.dataframe(data, hide_index=True, width='stretch', column_config={'Publication date': st.column_config.DateColumn('Publication date', format='MMM D, YYYY'), **{metric: st.column_config.NumberColumn(metric, format='%.3g') for metric in METRICS if metric in data.columns}})
 
 def export(data, name='models'):
     st.download_button('↓ Export CSV', data.to_csv(index=False).encode(), name+'.csv','text/csv')
