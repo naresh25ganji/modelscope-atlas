@@ -14,7 +14,7 @@ An independent Streamlit research workspace for exploring AI models, their train
 - Adjustable compute-to-energy and emissions scenario calculator
 - Session watchlists with persistent JSON export/import
 - Data coverage audit, uncertainty visibility and filtered CSV exports
-- Bundled offline snapshot plus optional cached live refresh with fallback
+- Live Epoch AI data by default, automatic five-minute refresh, one-click update, and last-good/snapshot fallback
 
 No API keys are required. Research retrieval is deterministic text matching, not an LLM or a capability benchmark. Training scale does not imply quality, inference performance, or deployment suitability.
 
@@ -44,3 +44,11 @@ Watchlists use stable hashes of model, organization and publication date. Correc
 ## Limitations
 
 The dataset is non-exhaustive, estimates can be uncertain, and this app does not provide benchmark comparisons or current API pricing. Energy scenarios omit hardware manufacturing and inference. Fit results depend on selection, coverage and annual maxima; they are descriptive rather than forecasts. The assistant does not execute user code or transmit questions to an AI provider.
+
+## Dynamic updates
+
+The app fetches Epoch AI's CSV by default, with a shared five-minute cache. Active sessions check freshness every minute and rerender all pages when a new source check completes. New visits fetch if the cache has expired. **Refresh now** bypasses the cache immediately. Automatic updates can be paused; interactions may still fetch after cache expiry.
+
+The sidebar shows the source-check time, dataset-fetch time and total records. On source failure, an existing session retains its last successful live data; a new session uses the bundled snapshot. Failed checks are cached for five minutes to avoid repeated requests during outages. No background polling runs when the app has no active sessions. No repository commit or redeployment is needed for live data changes.
+
+New models appear when Epoch AI publishes them in its dataset, which may lag provider announcements. Existing filters can hide new records. All times in freshness metadata are UTC.

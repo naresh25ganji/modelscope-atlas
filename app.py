@@ -1,35 +1,47 @@
 import json
-from datetime import datetime, timezone
-from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import requests
 import streamlit as st
-from core import SOURCE, METRICS, clean, shortlist, growth
+from core import METRICS, shortlist, growth
+from data_source import fetch_latest, resolve
 
 st.set_page_config(page_title='ModelScope Atlas', page_icon='🧭', layout='wide')
 st.markdown('''<style>.block-container{padding-top:2rem}h1{letter-spacing:-.04em}div[data-testid="stMetric"]{background:#151e32;border:1px solid #28364c;border-radius:12px;padding:18px}section[data-testid="stSidebar"]{border-right:1px solid #28364c}</style>''', unsafe_allow_html=True)
-
-@st.cache_data(ttl=21600)
-def load(live=False):
-    if live:
-        response = requests.get(SOURCE, timeout=30)
-        response.raise_for_status()
-        from io import StringIO
-        return clean(pd.read_csv(StringIO(response.text))), 'Live Epoch AI download', datetime.now(timezone.utc).isoformat()
-    return clean(pd.read_csv(Path(__file__).parent/'data/models.csv')), 'Bundled snapshot · October 11, 2026', '2026-10-11'
 
 with st.sidebar:
     st.title('🧭 ModelScope')
     st.caption('ATLAS / AI RESEARCH INTELLIGENCE')
     page = st.radio('Workspace', ['Overview','Explore','Compare','Research assistant','Scenario lab','Watchlist','Data quality & sources'])
-    live = st.toggle('Fetch latest Epoch data', value=False)
-try:
-    df, origin, fetched = load(live)
-except Exception as e:
-    st.warning(f'Live data unavailable ({type(e).__name__}). Using the bundled snapshot.')
-    df, origin, fetched = load(False)
+    auto_refresh = st.toggle('Automatic updates', value=True)
+    if st.button('↻ Refresh now', help='Fetch the current source immediately, bypassing the five-minute cache.'):
+        fetch_latest.clear()
+
+with st.spinner('Checking the latest model data…'):
+    latest = fetch_latest()
+previous = st.session_state.get('last_good_data')
+current, origin = resolve(latest, previous)
+if latest['data'] is not None:
+    if previous is not None and previous['version'] != latest['version']:
+        added = len(set(latest['data']['Record']) - set(previous['data']['Record']))
+        st.success(f'Dataset updated: {added:,} newly added records. Existing records may also have been revised.')
+    st.session_state.last_good_data = latest
+if latest['error']:
+    st.warning(f"Latest source check failed ({latest['error']}). Showing {origin.lower()}. Try Refresh now or wait for the next automatic check.")
+df, fetched = current['data'], current['checked']
+
+@st.fragment(run_every='60s' if auto_refresh else None)
+def freshness_monitor():
+    result = fetch_latest()
+    if result['checked'] != latest['checked']:
+        st.rerun()
+    st.caption('Checks every 5 minutes while open. Refresh now fetches immediately.' if auto_refresh else 'Automatic updates paused. Refresh now remains available.')
+    st.caption(f"Last source check: {result['checked']} (UTC)")
+    st.caption(f'Data fetched: {fetched} · {len(df):,} total records')
+    st.caption('New releases appear after Epoch AI adds them. Your filters still apply.')
+
+with st.sidebar:
+    freshness_monitor()
 with st.sidebar:
     st.divider()
     dated = df['Year'].dropna()
